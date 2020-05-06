@@ -56,7 +56,7 @@ def setContours(hsv, lower, upper):
     mask = cv.morphologyEx(mask, cv.MORPH_OPEN, kernel)
     mask = cv.dilate(mask, kernel, iterations=1)
 
-    _, cont, _ = cv.findContours(mask, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
+    cont, _ = cv.findContours(mask, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
     return cont
 
 
@@ -64,8 +64,7 @@ points = [deque(maxlen=512)]
 pointIndex = 0
 
 isDrawing = True
-isClear = False
-justClear = False
+
 
 
 
@@ -97,10 +96,14 @@ while cap.isOpened():
     # A to stop
     elif keys  == ord('a'):
         isDrawing = False
+        points.append(deque(maxlen=512))
+        pointIndex += 1
     # C to clear
     elif keys  == ord('c'):
-        points[i].clear()
+        points = [deque(maxlen=512)]
+        pointIndex = 0
         paintWindow[:]= 255
+
     elif keys == ord("q"):
         break
 
