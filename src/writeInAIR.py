@@ -101,7 +101,8 @@ while cap.isOpened():
     elif keys  == ord('c'):
         points[i].clear()
         paintWindow[:]= 255
-
+    elif keys == ord("q"):
+        break
 
     contours = setContours(hsv, lowerHSV, upperHSV)
     center = None
@@ -133,8 +134,7 @@ while cap.isOpened():
     cv.imshow("Paint", paintWindow)
 
     # If the 'q' key is pressed, stop the loop
-    if cv.waitKey(1) & 0xFF == ord("q"):
-        break
+
 
 cap.release()
 cv.destroyAllWindows()
