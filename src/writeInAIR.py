@@ -2,12 +2,19 @@ from collections import deque
 
 import cv2 as cv
 import numpy as np
+from PIL import ImageGrab
 
 
 def nothing(x):
     pass
 
-def setMask():
+def screenCapture():
+    screen = ImageGrab.grab()
+    screen_np = np.array(screen)
+    screen_cap = cv.cvtColor(screen_np, cv.COLOR_BGR2RGB)
+    return screen_cap
+
+def setMask(out):
     cv.namedWindow("MaskTrackBar")
     cv.createTrackbar("Lower H", "MaskTrackBar", 0, 180, nothing)
     cv.createTrackbar("Lower S", "MaskTrackBar", 0, 255, nothing)
@@ -20,6 +27,7 @@ def setMask():
         ret, frame = cap.read(0)
         frame = cv.flip(frame, 1)
         hsv = cv.cvtColor(frame, cv.COLOR_BGR2HSV)
+        # screen_cap=screenCapture()
 
         lh = cv.getTrackbarPos("Lower H", "MaskTrackBar")
         ls = cv.getTrackbarPos("Lower S", "MaskTrackBar")
@@ -39,9 +47,9 @@ def setMask():
 
         cv.imshow("Original", frame)
         cv.imshow("Filter", mask)
-
+        # out.write(screen_cap)
         k = cv.waitKey(1)
-        if k & 0xFF == ord("s"):
+        if k == ord("s"):
             break
 
     cv.destroyAllWindows()
@@ -90,6 +98,7 @@ def setInkColor():
     cv.createTrackbar('R', 'Ink Color', 0, 255, nothing)
 
     while True:
+        screen_cap = screenCapture()
         cv.imshow('Ink Color', color )
         k = cv.waitKey(1)
 
@@ -102,9 +111,11 @@ def setInkColor():
         r = cv.getTrackbarPos('R', 'Ink Color')
 
         color[:] = [b, g, r]
+        out.write(screen_cap)
 
 
 
+filename= input("Input the filename of the video: ")
 
 points = [deque(maxlen=512)]
 pointIndex = 0
@@ -118,28 +129,36 @@ paintWindow = cv.imread('whiteBg.jpg',-1)
 dim=(640,480)
 paintWindow= cv.resize(paintWindow,dim)
 
+
 cap = cv.VideoCapture(0)
 ret = cap.set(3, 640)
 ret = cap.set(4, 480)
 
+
+
+fourcc = cv.VideoWriter_fourcc(*'XVID')
+out= cv.VideoWriter(filename+'.avi', fourcc, 15, (1920,1080))
+
 #paintWindow = np.zeros((480,640,3))+255
 
-lh, ls, lv, uh, us, uv = setMask()
+lh, ls, lv, uh, us, uv = setMask(out)
 
-# lowerHSV = np.array([100, 100, 100])
-# upperHSV = np.array([140, 255, 255])
+lowerHSV = np.array([100, 100, 100])
+upperHSV = np.array([140, 255, 255])
 
-lowerHSV = np.array([lh, ls, lv])
-upperHSV = np.array([uh, us, uv])
+# lowerHSV = np.array([lh, ls, lv])
+# upperHSV = np.array([uh, us, uv])
 
 
 while cap.isOpened():
     ret, frame = cap.read()
     frame = cv.flip(frame, 1)
     hsv = cv.cvtColor(frame, cv.COLOR_BGR2HSV)
+    screen_cap=screenCapture()
 
     if not ret:
         break
+    out.write(frame)
     keys= cv.waitKey(1)
 
     # D to draw
@@ -174,6 +193,8 @@ while cap.isOpened():
 
     cv.imshow("Tracking", frame)
     cv.imshow("Paint", paintWindow)
+    out.write(screen_cap)
 
+out.release()
 cap.release()
 cv.destroyAllWindows()
