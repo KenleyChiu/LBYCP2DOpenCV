@@ -143,11 +143,11 @@ out= cv.VideoWriter(filename+'.avi', fourcc, 15, (1920,1080))
 
 lh, ls, lv, uh, us, uv = setMask(out)
 
-lowerHSV = np.array([100, 100, 100])
-upperHSV = np.array([140, 255, 255])
+#lowerHSV = np.array([100, 100, 100])
+#upperHSV = np.array([140, 255, 255])
 
-# lowerHSV = np.array([lh, ls, lv])
-# upperHSV = np.array([uh, us, uv])
+lowerHSV = np.array([lh, ls, lv])
+upperHSV = np.array([uh, us, uv])
 
 
 while cap.isOpened():
