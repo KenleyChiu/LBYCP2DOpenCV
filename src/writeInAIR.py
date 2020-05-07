@@ -7,7 +7,6 @@ import numpy as np
 def nothing(x):
     pass
 
-
 def setMask():
     cv.namedWindow("MaskTrackBar")
     cv.createTrackbar("Lower H", "MaskTrackBar", 0, 180, nothing)
@@ -48,7 +47,6 @@ def setMask():
     cv.destroyAllWindows()
     return lh, ls, lv, uh, us, uv
 
-
 def setContours(hsv, lower, upper):
     kernel = np.ones((5, 5), np.uint8)
     mask = cv.inRange(hsv, lower, upper)
@@ -59,27 +57,81 @@ def setContours(hsv, lower, upper):
     cont, _ = cv.findContours(mask, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
     return cont
 
+def findPointer(contours, center, points, pointIndex) :
+    if len(contours) > 0:
+        cnt = sorted(contours, key=cv.contourArea, reverse=True)[0]
+        # Get the radius of the enclosing circle around the found contour
+        ((x, y), radius) = cv.minEnclosingCircle(cnt)
+        # Draw the circle around the contour
+        cv.circle(frame, (int(x), int(y)), int(radius), (0, 255, 255), 2)
+        # Get the moments to calculate the center of the contour (in this case Circle)
+        M = cv.moments(cnt)
+        center = (int(M['m10'] / M['m00']), int(M['m01'] / M['m00']))
+        points[pointIndex].appendleft(center)
+    else:
+        points.append(deque(maxlen=512))
+        pointIndex += 1
+    return points
+
+def drawInk(points, frame, paintWindow, color):
+    for i in range(len(points)):
+        for j in range(1, len(points[i])):
+            if points[i][j - 1] is None or points[i][j] is None:
+                continue
+            cv.line(frame, points[i][j - 1], points[i][j], color, 10, 0)
+            cv.line(paintWindow, points[i][j - 1], points[i][j], color , 10, 0)
+
+def setInkColor():
+    color = np.zeros((300, 512, 3), np.uint8)
+    cv.namedWindow('Ink Color')
+
+    cv.createTrackbar('B', 'Ink Color', 0, 255, nothing)
+    cv.createTrackbar('G', 'Ink Color', 0, 255, nothing)
+    cv.createTrackbar('R', 'Ink Color', 0, 255, nothing)
+
+    while True:
+        cv.imshow('Ink Color', color )
+        k = cv.waitKey(1)
+
+        if k == ord('s'):
+            cv.destroyWindow('Ink Color')
+            return (b,g,r)
+
+        b = cv.getTrackbarPos('B', 'Ink Color')
+        g = cv.getTrackbarPos('G', 'Ink Color')
+        r = cv.getTrackbarPos('R', 'Ink Color')
+
+        color[:] = [b, g, r]
+
+
+
 
 points = [deque(maxlen=512)]
 pointIndex = 0
 
 isDrawing = True
+color = (255,0,0)
 
 
 
+paintWindow = cv.imread('whiteBg.jpg',-1)
+dim=(640,480)
+paintWindow= cv.resize(paintWindow,dim)
 
 cap = cv.VideoCapture(0)
 ret = cap.set(3, 640)
 ret = cap.set(4, 480)
-paintWindow = np.zeros((480,640,3))+255
+
+#paintWindow = np.zeros((480,640,3))+255
 
 lh, ls, lv, uh, us, uv = setMask()
 
-# lowerHSV = np.array([100, 60, 60])
+# lowerHSV = np.array([100, 100, 100])
 # upperHSV = np.array([140, 255, 255])
 
 lowerHSV = np.array([lh, ls, lv])
 upperHSV = np.array([uh, us, uv])
+
 
 while cap.isOpened():
     ret, frame = cap.read()
@@ -93,51 +145,35 @@ while cap.isOpened():
     # D to draw
     if keys  == ord('d'):
         isDrawing = True
+
     # A to stop
     elif keys  == ord('a'):
         isDrawing = False
         points.append(deque(maxlen=512))
         pointIndex += 1
+
     # C to clear
     elif keys  == ord('c'):
         points = [deque(maxlen=512)]
         pointIndex = 0
         paintWindow[:]= 255
 
-    elif keys == ord("q"):
+    # F to change Ink Color
+    elif keys == ord('f'):
+        color = setInkColor()
+
+    elif keys == 27:
         break
 
-    contours = setContours(hsv, lowerHSV, upperHSV)
-    center = None
-
-
     if isDrawing:
-        if len(contours) > 0:
-            cnt = sorted(contours, key=cv.contourArea, reverse=True)[0]
-            # Get the radius of the enclosing circle around the found contour
-            ((x, y), radius) = cv.minEnclosingCircle(cnt)
-            # Draw the circle around the contour
-            cv.circle(frame, (int(x), int(y)), int(radius), (0, 255, 255), 2)
-            # Get the moments to calculate the center of the contour (in this case Circle)
-            M = cv.moments(cnt)
-            center = (int(M['m10'] / M['m00']), int(M['m01'] / M['m00']))
-            points[pointIndex].appendleft(center)
-        else:
-            points.append(deque(maxlen=512))
-            pointIndex += 1
-    for i in range(len(points)):
-        for j in range(1, len(points[i])):
-            if points[i][j - 1] is None or points[i][j] is None:
-                continue
-            cv.line(frame, points[i][j - 1], points[i][j], (255, 0, 0), 10, 0)
-            cv.line(paintWindow, points[i][j - 1], points[i][j], (255, 0, 0), 10, 0)
+        contours = setContours(hsv, lowerHSV, upperHSV)
+        center = None
+        points = findPointer(contours, center, points, pointIndex)
 
+    drawInk(points, frame, paintWindow, color)
 
     cv.imshow("Tracking", frame)
     cv.imshow("Paint", paintWindow)
-
-    # If the 'q' key is pressed, stop the loop
-
 
 cap.release()
 cv.destroyAllWindows()
